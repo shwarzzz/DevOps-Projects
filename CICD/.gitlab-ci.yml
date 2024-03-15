@@ -1,0 +1,53 @@
+stages:
+  - build
+  - style
+  - test
+  - deploy
+
+build-job:
+  stage: build 
+  tags: 
+    - test
+  script:
+    - cd src/cat 
+    - make
+    - cd ../grep
+    - make
+  artifacts:
+    paths:
+      - src/cat/s21_cat
+      - src/grep/s21_grep 
+    expire_in: 30 days
+
+style-job:
+  stage: style
+  tags:
+    - test
+  script:
+    - cd src
+    - find . -name "*.c" -o -name "*.h" | xargs clang-format -n --style=Google --verbose
+    - find . -name "*.c" -o -name "*.h" | xargs clang-format -i --style=Google --verbose
+    - git diff --exit-code
+
+test-job:
+  stage: test
+  tags:
+    - test
+  when: on_success
+  script:
+    - cd src/cat
+    - make test
+    - if [ $? -ne 0 ]; then exit 1; fi 
+    - cd ../grep
+    - make test
+    - if [ $? -ne 0 ]; then exit 1; fi 
+
+deploy-job:
+  stage: deploy
+  tags:
+    - test
+  when: manual
+  script:
+    - cd src
+    - bash deploy.sh
+    - if [ $? -ne 0 ]; then exit 1; fi 
